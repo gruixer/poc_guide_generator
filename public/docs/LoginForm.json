@@ -1,0 +1,18 @@
+{
+  "component": "LoginForm",
+  "generated_at": "2026-04-29T19:08:47.469Z",
+  "sections": {
+    "description": "Connexion à un compte test avec identifiants spécifiques.",
+    "etapes": [
+      "Renseignez vos identifiants (adresse e-mail et mot de passe).",
+      "Cliquez sur le bouton 'Se connecter' pour valider vos informations.",
+      "Si vous rencontrez des difficultés, consultez le message d'erreur."
+    ],
+    "erreurs": [
+      {
+        "message": "Compte verrouillé. Contactez le support.",
+        "explication": "Cliquez sur le bouton 'Se connecter' pour essayer à nouveau."
+      }
+    ]
+  }
+}
