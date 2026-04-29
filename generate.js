@@ -131,7 +131,9 @@ async function callOllama(prompt, retries = MAX_RETRIES) {
       const response = await fetch(`${OLLAMA_URL}/api/generate`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ model: MODEL, prompt, stream: false, format: 'json' }),
+        // ⚠ format:'json' retiré — cause des timeouts avec llama3.2:3b
+        // Le parsing JSON est géré par extractJSON() (direct → strip ``` → regex)
+        body:    JSON.stringify({ model: MODEL, prompt, stream: false }),
         signal:  controller.signal,
       });
       clearTimeout(timer);
@@ -308,14 +310,28 @@ function generateFallback(componentName, diff) {
 // MAIN
 // ══════════════════════════════════════════════════════════════
 async function main() {
-  const filePath = process.argv.find(a => a.endsWith('.jsx') || a.endsWith('.js') || a.endsWith('.tsx'));
+  // process.argv[0] = node, process.argv[1] = generate.js, process.argv[2] = fichier cible
+  const filePath = process.argv[2];
 
-  if (!filePath) {
+  if (!filePath || filePath.startsWith('--')) {
     log.error('Usage : node generate.js <chemin/composant.jsx> [--dry-run]');
     process.exit(1);
   }
 
-  const componentName = basename(filePath, '.jsx').replace(/\.(js|tsx)$/, '');
+  if (!filePath.match(/\.(jsx|js|tsx)$/)) {
+    log.error(`Extension non supportée : ${filePath}`);
+    log.error('Fichiers acceptés : .jsx, .js, .tsx');
+    process.exit(1);
+  }
+
+  // Empêche de passer generate.js lui-même comme cible
+  if (basename(filePath) === 'generate.js') {
+    log.error('Tu passes generate.js comme composant cible — c\'est le script lui-même.');
+    log.error('Usage : node generate.js src/components/MonComposant.jsx');
+    process.exit(1);
+  }
+
+  const componentName = basename(filePath).replace(/\.(jsx|js|tsx)$/, '');
   const outputPath    = join(OUTPUT_DIR, `${componentName}.json`);
 
   console.log(`\n📄 Composant : ${componentName}`);
