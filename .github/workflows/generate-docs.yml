@@ -33,7 +33,7 @@ jobs:
 
       # 3. Installe les dépendances npm (dotenv)
       - name: Install dependencies
-        run: npm install --prefer-offline
+        run: npm ci
 
       # 4. Installe Ollama sur le serveur Ubuntu de GitHub
       - name: Install Ollama

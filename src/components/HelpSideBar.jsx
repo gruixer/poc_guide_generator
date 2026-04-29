@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 
+
 export function HelpSidebar({ componentName = "LoginForm" }) {
   const [open, setOpen]       = useState(false);
   const [guide, setGuide]     = useState(null);
