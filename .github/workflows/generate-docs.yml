@@ -62,7 +62,7 @@ jobs:
 
       # ── 5. Télécharger le modèle ───────────────────────────────────────
       - name: Pull model
-        run: ollama pull llama3.2:3b
+        run: ollama pull llama3:8b
         timeout-minutes: 10
 
       # ── 6. Vérifier que le modèle répond correctement ─────────────────
@@ -70,7 +70,7 @@ jobs:
         run: |
           RESULT=$(curl -sf -X POST http://localhost:11434/api/generate \
             -H 'Content-Type: application/json' \
-            -d '{"model":"llama3.2:3b","prompt":"Réponds uniquement: ok","stream":false}' \
+            -d '{"model":"llama3:8b","prompt":"Réponds uniquement: ok","stream":false}' \
             | python3 -c "import sys,json; print(json.load(sys.stdin)['response'])" 2>&1)
           echo "Réponse modèle : $RESULT"
           if [ -z "$RESULT" ]; then
