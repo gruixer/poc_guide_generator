@@ -1,8 +1,8 @@
 {
   "component": "LoginForm",
-  "generated_at": "2026-04-29T19:53:33.350Z",
+  "generated_at": "2026-04-29T19:58:59.256Z",
   "sections": {
-    "description": "Utilisez ce formulaire pour vous connecter à votre compte en saisissant votre username.",
+    "description": "Utilisez ce formulaire pour vous connecter à votre compte en saisissant votre username et votre mot de passe.",
     "etapes": [
       "Étape 1 : Entrez votre username et votre mot de passe.",
       "Étape 2 : Cliquez sur le bouton 'Se connecter' pour vous connecter.",
