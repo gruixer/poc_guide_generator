@@ -59,13 +59,21 @@ jobs:
       - name: Pull model
         run: ollama pull llama3.2:3b
 
-      # 8. Détecte quels composants ont changé dans ce push
+      # 8. Détecte les composants à documenter
       - name: Detect changed components
         id: changes
         run: |
-          CHANGED=$(git diff --name-only HEAD~1 HEAD | grep "src/components/.*\.jsx$" || true)
+          # Essaie d'abord le diff avec le commit précédent
+          CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null | grep "src/components/.*\.jsx$" || true)
+              
+          # Si vide (premier push ou push sans historique) → prend TOUS les composants
+          if [ -z "$CHANGED" ]; then
+            echo "Pas de diff trouvé — scan complet des composants"
+            CHANGED=$(find src/components -name "*.jsx" 2>/dev/null | tr '\n' ' ')
+          fi
+              
           echo "files=$CHANGED" >> $GITHUB_OUTPUT
-          echo "Composants modifiés : $CHANGED"
+          echo "Composants détectés : $CHANGED"
       # 8.5. Crée le dossier de destination s'il n'existe pas
       - name: Create docs directory
         run: mkdir -p public/docs
@@ -78,8 +86,10 @@ jobs:
           OLLAMA_MODEL: llama3.2:3b
         run: |
           for FILE in ${{ steps.changes.outputs.files }}; do
-            echo "Génération pour : $FILE"
-            node generate.js "$FILE"
+            if [ -f "$FILE" ]; then
+              echo "Génération pour : $FILE"
+              node generate.js "$FILE"
+            fi
           done
 
       # 10. Committe le JSON généré dans le repo
