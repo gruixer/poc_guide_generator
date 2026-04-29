@@ -21,7 +21,7 @@ export function LoginForm({ onSuccess, maxAttempts = 3 }) {
         setLocked(true);
         setError("Compte verrouillé. Contactez le support.⚠️");
       } else {
-        setError(`Identifiants incorrects. Tentative ${next}/${maxAttempts}.`);
+        setError(`Identifiants incorrects.⚠️ Tentative ${next}/${maxAttempts}.`);
       }
     } else {
       setError("");
