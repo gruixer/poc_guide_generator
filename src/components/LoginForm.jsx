@@ -49,7 +49,7 @@ export function LoginForm({ onSuccess, maxAttempts = 3 }) {
 
 const styles = {
   form:  { display: "flex", flexDirection: "column", gap: 12, width: 300 },
-  title: { margin: 0, fontSize: 20, fontWeight: 700, color: "#1a1a2e" },
+  title: { margin: 0, fontSize: 20, fontWeight: 700, color: "#202092" },
   input: { padding: "10px 12px", borderRadius: 6, border: "1.5px solid #e2e8f0", fontSize: 14 },
   btn:   { padding: "10px 0", background: "#667eea", color: "#fff", border: "none", borderRadius: 6, fontWeight: 700, cursor: "pointer", fontSize: 14 },
   error: { color: "#c26641", fontSize: 13, margin: 0, padding: "8px 12px", background: "#fff7ed", borderRadius: 6, border: "1px solid #fed7aa" },
