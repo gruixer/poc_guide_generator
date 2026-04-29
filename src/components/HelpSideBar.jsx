@@ -1,4 +1,3 @@
-// L'utilisateur consulte le guide — il ne génère rien.
 "use client";
 import { useState, useEffect } from "react";
 
