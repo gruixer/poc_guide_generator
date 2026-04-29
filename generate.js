@@ -189,6 +189,26 @@ function loadExistingGuide(outputPath) {
   }
 }
 
+// ── Persona / Skills ────────────────────────────────────────
+// Donne un rôle précis au modèle pour améliorer la qualité du contenu
+const PERSONA = `Tu es une combinaison de trois experts :
+
+1. DEV SENIOR (10 ans d'expérience)
+   - Tu lis et comprends parfaitement le code React
+   - Tu identifies instantanément ce qui impacte ou non l'utilisateur final
+   - Tu sais distinguer un changement technique interne d'un changement visible
+
+2. UX WRITER / DESIGNER
+   - Tu écris des guides clairs, concis, sans jargon technique
+   - Tu penses toujours du point de vue de l'utilisateur final non-technique
+   - Tu utilises un vocabulaire simple et des formulations cohérentes
+   - Tu sais qu'une bonne documentation ne dit que ce qui est nécessaire
+
+3. EXPERT QUALITÉ DOCUMENTATION
+   - Tu garantis la cohérence du style entre chaque version du guide
+   - Tu ne modifies jamais ce qui n'a pas besoin d'être modifié
+   - Tu valides que chaque étape correspond à une vraie action utilisateur dans le code`;
+
 // ── Niveau 3 — Prompt strict ────────────────────────────────
 // Deux prompts selon qu'un guide existe déjà ou non
 function buildPrompt(componentName, codeOrDiff, isDiff, existingGuide) {
@@ -200,14 +220,17 @@ function buildPrompt(componentName, codeOrDiff, isDiff, existingGuide) {
   const strictRules = `RÈGLES ABSOLUES — respecte-les sans exception :
 1. Réponds UNIQUEMENT avec du JSON valide — aucun texte avant ou après, aucun backtick
 2. La description : UNE seule phrase simple, maximum 15 mots, pour un utilisateur non-technique
-3. Format des étapes : exactement "Étape N : ..." (ex: "Étape 1 : Saisissez votre adresse e-mail.")
+3. Format des étapes : numéros simples uniquement — "1.", "2.", "3." — jamais "Étape 1 :"
+   Exemple correct   : "Saisissez votre adresse e-mail."
+   Exemple interdit  : "Étape 1 : Saisissez votre adresse e-mail."
+   Exemple interdit  : "1. Étape 1 : Saisissez votre adresse e-mail."
 4. Les messages d'erreur : copie-les EXACTEMENT depuis le code source, mot pour mot
 5. Ne jamais inventer de fonctionnalités absentes du code
 6. Ne jamais changer le style rédactionnel entre deux générations`;
 
   // Premier guide — génération from scratch
   if (!existingGuide) {
-    return `Tu es un rédacteur de documentation utilisateur.
+    return `${PERSONA}
 
 ${strictRules}
 
@@ -222,9 +245,9 @@ Génère le guide en JSON avec cette structure exacte :
   "sections": {
     "description": "une phrase simple max 15 mots",
     "etapes": [
-      "Étape 1 : ...",
-      "Étape 2 : ...",
-      "Étape 3 : ..."
+      "Saisissez votre adresse e-mail.",
+      "Entrez votre mot de passe.",
+      "Cliquez sur Se connecter."
     ],
     "erreurs": [
       {
@@ -237,7 +260,7 @@ Génère le guide en JSON avec cette structure exacte :
   }
 
   // Guide existant — mise à jour ciblée
-  return `Tu es un rédacteur de documentation utilisateur.
+  return `${PERSONA}
 
 ${strictRules}
 7. Si le changement n'impacte PAS l'expérience utilisateur visible : retourne le guide IDENTIQUE
@@ -257,7 +280,11 @@ Retourne le JSON complet mis à jour (ou identique si aucun changement utilisate
   "generated_at": "${new Date().toISOString()}",
   "sections": {
     "description": "...",
-    "etapes": ["Étape 1 : ...", "Étape 2 : ...", "Étape 3 : ..."],
+    "etapes": [
+      "Saisissez votre adresse e-mail.",
+      "Entrez votre mot de passe.",
+      "Cliquez sur Se connecter."
+    ],
     "erreurs": [
       { "message": "...", "explication": "..." }
     ]
