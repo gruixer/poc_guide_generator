@@ -44,7 +44,14 @@ jobs:
 
       # 5. Démarre Ollama en arrière-plan
       - name: Start Ollama
-        run: ollama serve &
+        run: |
+          ollama serve &
+          # Attend que le port soit ouvert (max 60 secondes)
+          for i in $(seq 1 30); do
+            curl -s http://localhost:11434/api/tags > /dev/null 2>&1 && echo "✔ Ollama prêt" && break
+            echo "Attente... ($i)"
+            sleep 2
+          done
 
       # 6. Attend qu'Ollama soit prêt à répondre
       - name: Wait for Ollama

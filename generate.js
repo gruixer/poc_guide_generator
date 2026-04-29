@@ -293,30 +293,44 @@ Retourne le JSON complet mis à jour (ou identique si aucun changement utilisate
 }
 
 // ── Appel Ollama ────────────────────────────────────────────
-async function callOllama(prompt) {
+async function callOllama(prompt, retries = 3) {
   const url   = process.env.OLLAMA_URL   || "http://localhost:11434";
   const model = process.env.OLLAMA_MODEL || "llama3.2:3b";
 
   console.log(`  Modèle : ${model}`);
-  console.log(`  Envoi à Ollama...`);
 
-  const response = await fetch(`${url}/api/generate`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model,
-      prompt,
-      stream: false,
-      format: "json", // Force la sortie JSON — atténue les hallucinations
-    }),
-  });
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      console.log(`  Envoi à Ollama... (tentative ${attempt}/${retries})`);
 
-  if (!response.ok) {
-    throw new Error(`Ollama a répondu : ${response.status} ${response.statusText}`);
+      const response = await fetch(`${url}/api/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model,
+          prompt,
+          stream: false,
+          format: "json",
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Ollama a répondu : ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data.response;
+
+    } catch (err) {
+      console.log(`  ⚠ Tentative ${attempt} échouée : ${err.message}`);
+
+      if (attempt === retries) throw err;
+
+      // Attend 5 secondes avant de réessayer
+      console.log(`  Nouvelle tentative dans 5s...`);
+      await new Promise(r => setTimeout(r, 5000));
+    }
   }
-
-  const data = await response.json();
-  return data.response;
 }
 
 // ── Parse et validation ─────────────────────────────────────
