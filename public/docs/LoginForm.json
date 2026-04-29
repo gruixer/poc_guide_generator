@@ -1,12 +1,12 @@
 {
   "component": "LoginForm",
-  "generated_at": "2024-03-08T14:30:00.000Z",
+  "generated_at": "2026-04-29T19:35:22.718Z",
   "sections": {
     "description": "Utilisez ce formulaire pour vous connecter à votre compte.",
     "etapes": [
-      "1. Entrez votre adresse e-mail et votre mot de passe.",
-      "2. Cliquez sur le bouton 'Se connecter' pour vous connecter.",
-      "3. Si vous rencontrez des difficultés, consultez le message d'erreur."
+      "Étape 1 : Entrez votre adresse e-mail et votre mot de passe.",
+      "Étape 2 : Cliquez sur le bouton 'Se connecter' pour vous connecter.",
+      "Étape 3 : Si vous rencontrez des difficultés, consultez le message d'erreur."
     ],
     "erreurs": [
       {
