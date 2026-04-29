@@ -1,0 +1,17 @@
+{
+  "component": "Dashboard",
+  "generated_at": "2026-04-29T21:35:20.644Z",
+  "sections": {
+    "description": "Ce que fait ce composant en une phrase pour un utilisateur.",
+    "etapes": [
+      "L'utilisateur peut accéder à son profil et modifier ses préférences.",
+      "Il peut également consulter les statistiques de son activité sur le site."
+    ],
+    "erreurs": [
+      {
+        "message": "Veuillez entrer votre mot de passe valide pour continuer.",
+        "explication": "Si vous avez oublié votre mot de passe, vous pouvez le renseigner dans la barre de recherche en haut de la page."
+      }
+    ]
+  }
+}
