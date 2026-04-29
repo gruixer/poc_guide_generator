@@ -1,6 +1,6 @@
 # .github/workflows/generate-docs.yml
-# Se déclenche à chaque push sur main si un composant React est modifié
-# Installe Ollama, génère les guides JSON, les committe dans le repo
+# Se déclenche uniquement si un composant React est modifié
+# Installe Ollama, génère les guides JSON, les committe
 
 name: Générer les guides utilisateur
 
@@ -8,109 +8,177 @@ on:
   push:
     branches: [main]
     paths:
-      - "src/components/**.jsx"  # Ne tourne que si un composant change
+      - "src/components/**.jsx"
+    # ↑ Filtre sur les composants uniquement — évite de tourner pour des
+    #   changements de style, config, ou guides déjà générés
 
 permissions:
-  contents: write  # Nécessaire pour que le bot committe le JSON
+  contents: write  # Nécessaire pour le git push du bot
 
 jobs:
   generate:
     runs-on: ubuntu-latest
+    # Sécurité : ignore les commits faits par le bot lui-même pour éviter
+    # une boucle de déclenchement infinie
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
 
     steps:
-      # 1. Récupère le code du repo
+      # ── 1. Checkout ────────────────────────────────────────────────────
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2  # Nécessaire pour comparer avec le commit précédent
+          fetch-depth: 2  # Nécessaire pour git diff HEAD~1 HEAD
 
-      # 2. Installe Node.js
+      # ── 2. Node.js ─────────────────────────────────────────────────────
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
-          registry-url: "https://registry.npmjs.org/"
 
-      # 3. Installe les dépendances npm (dotenv)
       - name: Install dependencies
         run: npm ci
-        env:
-          NODE_AUTH_TOKEN: ""
 
-      # 4. Installe Ollama sur le serveur Ubuntu de GitHub
+      # ── 3. Installer Ollama ────────────────────────────────────────────
       - name: Install Ollama
         run: curl -fsSL https://ollama.com/install.sh | bash
 
-      # 5. Démarre Ollama en arrière-plan
-      - name: Start Ollama
+      # ── 4. Démarrer Ollama + health check robuste ──────────────────────
+      - name: Start Ollama and wait for readiness
         run: |
           ollama serve &
-          echo "Attente démarrage Ollama..."
+          echo "Attente du démarrage d'Ollama..."
           for i in $(seq 1 60); do
-            if curl -s http://localhost:11434/api/tags > /dev/null 2>&1; then
+            if curl -sf http://localhost:11434/api/tags > /dev/null 2>&1; then
               echo "✔ Ollama prêt après ${i}s"
               break
             fi
+            if [ "$i" -eq 60 ]; then
+              echo "✗ Ollama n'a pas démarré dans les 60s"
+              exit 1
+            fi
             sleep 1
           done
-          # Test réel avec un prompt minimal pour s'assurer que le modèle répond
-          echo "Test du modèle..."
-          ollama run llama3.2:3b "ok" > /dev/null 2>&1
-          echo "✔ Modèle prêt"
 
-      # 6. Attend qu'Ollama soit prêt à répondre
-      - name: Wait for Ollama
-        run: |
-          echo "Attente démarrage Ollama..."
-          for i in $(seq 1 30); do
-            curl -s http://localhost:11434/api/tags > /dev/null && echo "Ollama prêt !" && break
-            sleep 2
-          done
-
-      # 7. Télécharge le modèle léger
+      # ── 5. Télécharger le modèle ───────────────────────────────────────
       - name: Pull model
         run: ollama pull llama3.2:3b
+        timeout-minutes: 10
 
-      # 8. Détecte les composants à documenter
+      # ── 6. Vérifier que le modèle répond correctement ─────────────────
+      - name: Smoke test Ollama
+        run: |
+          RESULT=$(curl -sf -X POST http://localhost:11434/api/generate \
+            -H 'Content-Type: application/json' \
+            -d '{"model":"llama3.2:3b","prompt":"Réponds uniquement: ok","stream":false}' \
+            | python3 -c "import sys,json; print(json.load(sys.stdin)['response'])" 2>&1)
+          echo "Réponse modèle : $RESULT"
+          if [ -z "$RESULT" ]; then
+            echo "✗ Le modèle ne répond pas"
+            exit 1
+          fi
+          echo "✔ Modèle opérationnel"
+
+      # ── 7. Détecter les composants modifiés ───────────────────────────
       - name: Detect changed components
         id: changes
         run: |
           # Essaie d'abord le diff avec le commit précédent
-          CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null | grep "src/components/.*\.jsx$" || true)
-              
-          # Si vide (premier push ou push sans historique) → prend TOUS les composants
+          CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null \
+            | grep "src/components/.*\.jsx$" || true)
+
+          # Premier push sans historique → traite tous les composants
           if [ -z "$CHANGED" ]; then
-            echo "Pas de diff trouvé — scan complet des composants"
-            CHANGED=$(find src/components -name "*.jsx" 2>/dev/null | tr '\n' ' ')
+            echo "ℹ Pas de diff — scan complet des composants"
+            CHANGED=$(find src/components -name "*.jsx" 2>/dev/null || true)
           fi
-              
+
+          # Sécurité : évite de traiter des centaines de fichiers d'un coup
+          COUNT=$(echo "$CHANGED" | grep -c "\.jsx" || echo "0")
+          if [ "$COUNT" -gt 20 ]; then
+            echo "⚠ $COUNT composants détectés — limité aux 20 premiers"
+            CHANGED=$(echo "$CHANGED" | head -20)
+          fi
+
           echo "files=$CHANGED" >> $GITHUB_OUTPUT
-          echo "Composants détectés : $CHANGED"
-      # 8.5. Crée le dossier de destination s'il n'existe pas
+          echo "count=$COUNT"   >> $GITHUB_OUTPUT
+          echo "Composants à traiter : $CHANGED"
+
+      # ── 8. Créer le dossier de sortie ─────────────────────────────────
       - name: Create docs directory
         run: mkdir -p public/docs
 
-      # 9. Pour chaque composant modifié, génère son guide
+      # ── 9. Générer les guides ─────────────────────────────────────────
       - name: Generate guides
         if: steps.changes.outputs.files != ''
         env:
-          OLLAMA_URL: http://localhost:11434
+          OLLAMA_URL:   http://localhost:11434
           OLLAMA_MODEL: llama3.2:3b
         run: |
+          ERRORS=0
           for FILE in ${{ steps.changes.outputs.files }}; do
             if [ -f "$FILE" ]; then
-              echo "Génération pour : $FILE"
-              node generate.js "$FILE"
+              echo "──────────────────────────────────────────"
+              echo "Traitement : $FILE"
+              if node generate.js "$FILE"; then
+                echo "✔ OK : $FILE"
+              else
+                echo "✗ Échec : $FILE (le fallback a été utilisé)"
+                ERRORS=$((ERRORS + 1))
+              fi
+            else
+              echo "⚠ Fichier absent (composant supprimé ?) : $FILE"
             fi
           done
+          echo "──────────────────────────────────────────"
+          echo "Génération terminée. Erreurs : $ERRORS"
+          # On ne fail pas le job sur des erreurs partielles (fallback utilisé)
+          # Le commit en step 10 inclura les guides fallback
 
-      # 10. Committe le JSON généré dans le repo
+      # ── 10. Valider les JSON générés ──────────────────────────────────
+      - name: Validate generated JSON
+        if: steps.changes.outputs.files != ''
+        run: |
+          INVALID=0
+          for JSON_FILE in public/docs/*.json; do
+            [ -f "$JSON_FILE" ] || continue
+            if python3 -c "
+          import json, sys
+          with open('$JSON_FILE') as f:
+              d = json.load(f)
+          required = ['component', 'generated_at', 'sections']
+          sections = ['description', 'etapes', 'erreurs']
+          assert all(k in d for k in required), f'Clé manquante dans {d.keys()}'
+          assert all(k in d['sections'] for k in sections), f'Section manquante'
+          assert isinstance(d['sections']['etapes'], list), 'etapes doit être une liste'
+          assert isinstance(d['sections']['erreurs'], list), 'erreurs doit être une liste'
+          print(f'✔ {\"$JSON_FILE\"} : OK')
+          " 2>&1; then
+              : # OK
+            else
+              echo "✗ JSON invalide : $JSON_FILE"
+              INVALID=$((INVALID + 1))
+            fi
+          done
+          if [ "$INVALID" -gt 0 ]; then
+            echo "✗ $INVALID fichier(s) JSON invalide(s)"
+            exit 1
+          fi
+          echo "✔ Tous les fichiers JSON sont valides"
+
+      # ── 11. Committer les guides générés ──────────────────────────────
       - name: Commit generated guides
         if: steps.changes.outputs.files != ''
         run: |
-          git config user.name "github-actions[bot]"
+          git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add public/docs/
-          git diff --staged --quiet || git commit -m "docs: guides générés automatiquement par Ollama [skip ci]"
-          git push
+          # "--quiet" supprime le message "nothing to commit" sans échouer
+          if git diff --staged --quiet; then
+            echo "ℹ Aucun guide modifié — pas de commit"
+          else
+            # [skip ci] empêche le workflow de se redéclencher sur ce commit
+            git commit -m "docs: guides générés automatiquement par Ollama [skip ci]"
+            git push
+            echo "✔ Guides committés et pushés"
+          fi
