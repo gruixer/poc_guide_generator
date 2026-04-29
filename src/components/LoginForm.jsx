@@ -32,7 +32,7 @@ export function LoginForm({ onSuccess, maxAttempts = 3 }) {
   return (
     <form onSubmit={handleSubmit} style={styles.form}>
       <h2 style={styles.title}>Connexion</h2>
-      <input type="email" placeholder="Adresse e-mail / or username" value={email}
+      <input type="string" placeholder="Username" value={email}
         onChange={(e) => setEmail(e.target.value)} style={styles.input}
         disabled={locked} required />
       <input type="password" placeholder="Mot de passe" value={password}
