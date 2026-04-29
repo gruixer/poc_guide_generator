@@ -161,7 +161,7 @@ export function Dashboard({ username = "Kevin", onLogout }) {
         <span>© 2026 MyApp — Module 245 · EPSIC</span>
         <span style={styles.footerRight}>
           Guide auto-généré par Ollama ·
-          <span style={{ color: "#10b981", marginLeft: 6 }}>● En ligne</span>
+          <span style={{ color: "#3a9778", marginLeft: 6 }}>● En ligne</span>
         </span>
       </footer>
 
