@@ -1,6 +1,6 @@
 "use client";
-import { LoginForm } from "@/components/LoginForm";
-import { HelpSidebar } from "@/components/HelpSidebar";
+import { LoginForm } from "../components/LoginForm";
+import { HelpSidebar } from "../components/HelpSideBar";
 
 export default function Home() {
   return (
