@@ -46,12 +46,18 @@ jobs:
       - name: Start Ollama
         run: |
           ollama serve &
-          # Attend que le port soit ouvert (max 60 secondes)
-          for i in $(seq 1 30); do
-            curl -s http://localhost:11434/api/tags > /dev/null 2>&1 && echo "✔ Ollama prêt" && break
-            echo "Attente... ($i)"
-            sleep 2
+          echo "Attente démarrage Ollama..."
+          for i in $(seq 1 60); do
+            if curl -s http://localhost:11434/api/tags > /dev/null 2>&1; then
+              echo "✔ Ollama prêt après ${i}s"
+              break
+            fi
+            sleep 1
           done
+          # Test réel avec un prompt minimal pour s'assurer que le modèle répond
+          echo "Test du modèle..."
+          ollama run llama3.2:3b "ok" > /dev/null 2>&1
+          echo "✔ Modèle prêt"
 
       # 6. Attend qu'Ollama soit prêt à répondre
       - name: Wait for Ollama
