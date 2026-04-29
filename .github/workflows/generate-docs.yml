@@ -30,6 +30,7 @@ jobs:
         with:
           node-version: "20"
           cache: "npm"
+          registry-url: "https://registry.npmjs.org/"
 
       # 3. Installe les dépendances npm (dotenv)
       - name: Install dependencies
