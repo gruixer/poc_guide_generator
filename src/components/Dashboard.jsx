@@ -317,7 +317,7 @@ const styles = {
     gap: 16,
   },
   statCard: {
-    background: "#fff", borderRadius: 12,
+    background: "#9d3434", borderRadius: 12,
     padding: "20px", border: "1px solid #e2e8f0",
     position: "relative", overflow: "hidden",
   },
