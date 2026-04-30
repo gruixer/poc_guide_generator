@@ -17,13 +17,13 @@ dotenv.config({ path: '.env.local' });
 // CONFIG
 // ══════════════════════════════════════════════════════════════
 const OLLAMA_URL   = process.env.OLLAMA_URL   || 'http://localhost:11434';
-const MODEL        = process.env.OLLAMA_MODEL  || 'qwen2.5:0.5b';
+const MODEL        = process.env.OLLAMA_MODEL  || 'qwen2.5:14b';
 const OUTPUT_DIR   = 'public/docs';
 const TIMEOUT_MS   = 30 * 60 * 1000; // 30 minutes par appel
 const MAX_RETRIES  = 1;               // 1 seule tentative — si 30min ne suffisent pas, rien ne suffira
-const MIN_SCORE    = 3;        // seuil abaissé pour runner CI limité
-const MAX_CODE_LEN = 1_500;    // ← réduit : modèle 3B sur 2 CPU ne digère pas plus
-const MAX_DIFF_LEN = 800;      // ← réduit : on veut juste les changements clés
+const MIN_SCORE    = 4;               // seuil relevé — le 14b doit produire du bon contenu
+const MAX_CODE_LEN = 6_000;           // 14b peut digérer plus de contexte
+const MAX_DIFF_LEN = 3_000;           // diff complet pour mieux comprendre les changements
 
 const DRY_RUN = process.argv.includes('--dry-run');
 
