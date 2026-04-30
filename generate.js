@@ -13,10 +13,9 @@ import * as dotenv from "dotenv";
 
 dotenv.config({ path: ".env.local" });
 
-// ── Config ──────────────────────────────────────────────────
-const OLLAMA_URL  = process.env.OLLAMA_URL   || "http://localhost:11434";
-const MODEL       = process.env.OLLAMA_MODEL || "qwen2.5:7b";
-const OUTPUT_DIR  = "public/docs";
+const OLLAMA_URL = process.env.OLLAMA_URL   || "http://localhost:11434";
+const MODEL      = process.env.OLLAMA_MODEL || "qwen2.5:7b";
+const OUTPUT_DIR = "public/docs";
 
 const DRY_RUN = process.argv.includes("--dry-run");
 
@@ -25,12 +24,6 @@ const filePath = process.argv[2];
 
 if (!filePath || filePath.startsWith("--")) {
   console.error("Usage : node generate.js <chemin/composant.jsx> [--dry-run]");
-  process.exit(1);
-}
-
-if (basename(filePath) === "generate.js") {
-  console.error("✗ Tu passes generate.js comme cible — c'est le script lui-même.");
-  console.error("  Usage : node generate.js src/components/MonComposant.jsx");
   process.exit(1);
 }
 
@@ -47,24 +40,31 @@ function sanitize(code) {
 }
 
 // ── Niveau 2 — Git diff ─────────────────────────────────────
+// Retourne uniquement les lignes modifiées si possible
+// Sinon retourne le fichier entier (nouveau fichier / premier commit)
 function getCodeOrDiff(filePath) {
   try {
-    const diff = execSync(`git diff HEAD~1 HEAD -- "${filePath}"`, {
+    const diff = execSync(`git diff HEAD~1 -- ${filePath}`, {
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "ignore"],
     });
+
     if (diff.trim()) {
       console.log("  Mode : git diff (lignes modifiées uniquement)");
-      return { content: diff.slice(0, MAX_CONTEXT), isDiff: true };
+      return { content: diff, isDiff: true };
     }
-  } catch {}
+  } catch {
+    // Pas de commit précédent — normal au premier run
+  }
 
+  // Pas de diff → nouveau fichier ou premier commit → fichier entier
   console.log("  Mode : fichier complet (nouveau composant)");
   const content = readFileSync(filePath, "utf-8");
-  return { content: content.slice(0, MAX_CONTEXT), isDiff: false };
+  return { content, isDiff: false };
 }
 
 // ── Niveau 1 — Guide existant ───────────────────────────────
+// Charge le guide actuel s'il existe pour le passer en contexte
 function loadExistingGuide(outputPath) {
   if (!existsSync(outputPath)) return null;
   try {
@@ -75,6 +75,7 @@ function loadExistingGuide(outputPath) {
 }
 
 // ── Niveau 3 — Prompt strict ────────────────────────────────
+// Deux prompts selon qu'un guide existe déjà ou non
 function buildPrompt(componentName, codeOrDiff, isDiff, existingGuide) {
   const codeBlock = isDiff
     ? `GIT DIFF (lignes modifiées — + ajouté, - supprimé) :\n${codeOrDiff}`
@@ -88,6 +89,7 @@ function buildPrompt(componentName, codeOrDiff, isDiff, existingGuide) {
 5. Ne jamais inventer de fonctionnalités absentes du code
 6. Ne jamais changer le style rédactionnel entre deux générations`;
 
+  // Premier guide — génération from scratch
   if (!existingGuide) {
     return `Tu es un rédacteur de documentation utilisateur.
 
@@ -118,6 +120,7 @@ Génère le guide en JSON avec cette structure exacte :
 }`;
   }
 
+  // Guide existant — mise à jour ciblée
   return `Tu es un rédacteur de documentation utilisateur.
 
 ${strictRules}
@@ -151,27 +154,15 @@ async function callOllama(prompt) {
   console.log(`  Modèle : ${MODEL}`);
   console.log(`  Envoi à Ollama...`);
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const response = await fetch(`${OLLAMA_URL}/api/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model: MODEL, prompt, stream: false }),
+  });
 
-  try {
-    const response = await fetch(`${OLLAMA_URL}/api/generate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model: MODEL, prompt, stream: false }),
-      signal: controller.signal,
-    });
-    clearTimeout(timer);
-
-    if (!response.ok) throw new Error(`Ollama : HTTP ${response.status}`);
-    const data = await response.json();
-    return data.response;
-
-  } catch (err) {
-    clearTimeout(timer);
-    const reason = err.name === "AbortError" ? "Timeout (30min)" : err.message;
-    throw new Error(`Ollama indisponible : ${reason}`);
-  }
+  if (!response.ok) throw new Error(`Ollama : HTTP ${response.status}`);
+  const data = await response.json();
+  return data.response;
 }
 
 // ── Parse et validation ─────────────────────────────────────
@@ -190,24 +181,8 @@ function parseAndValidate(raw, componentName) {
 
   guide.component    = componentName;
   guide.generated_at = new Date().toISOString();
-  guide.fallback     = false;
 
   return guide;
-}
-
-// ── Fallback ────────────────────────────────────────────────
-function generateFallback(componentName) {
-  console.warn("⚠ Utilisation du guide fallback (génération LLM échouée)");
-  return {
-    component:    componentName,
-    generated_at: new Date().toISOString(),
-    fallback:     true,
-    sections: {
-      description: `Composant ${componentName} récemment modifié.`,
-      etapes:      ["Consultez le code source pour les actions disponibles."],
-      erreurs:     [],
-    },
-  };
 }
 
 function saveGuide(guide, outputPath) {
@@ -219,8 +194,7 @@ function saveGuide(guide, outputPath) {
 async function main() {
   console.log(`\n📄 Composant : ${componentName}`);
   console.log(`📁 Fichier   : ${filePath}`);
-  console.log(`💾 Sortie    : ${outputPath}`);
-  if (DRY_RUN) console.log("🔍 Mode      : DRY RUN (rien ne sera écrit)\n");
+  console.log(`💾 Sortie    : ${outputPath}\n`);
 
   if (!existsSync(filePath)) {
     console.error(`✗ Fichier introuvable : ${filePath}`);
@@ -238,36 +212,17 @@ async function main() {
     console.log("  Aucun guide existant — première génération");
   }
 
-  if (existingGuide && !isDiff) {
-    console.log("✅ Aucun changement détecté — guide conservé tel quel");
-    return;
-  }
-
   const prompt = buildPrompt(componentName, sanitized, isDiff, existingGuide);
 
-  let guide;
-  try {
-    const raw = await callOllama(prompt);
-    guide = parseAndValidate(raw, componentName);
-  } catch (err) {
-    console.error(`✗ Erreur de génération : ${err.message}`);
-    guide = generateFallback(componentName);
-  }
-
-  if (DRY_RUN) {
-    console.log("\n══════════════ DRY RUN — RÉSULTAT ══════════════\n");
-    console.log(JSON.stringify(guide, null, 2));
-    console.log("\n═════════════════════════════════════════════════\n");
-    return;
-  }
+  const raw   = await callOllama(prompt);
+  const guide = parseAndValidate(raw, componentName);
 
   saveGuide(guide, outputPath);
 
   console.log(`\n✅ Guide sauvegardé : ${outputPath}`);
   console.log(`   Description : ${guide.sections.description}`);
   console.log(`   Étapes      : ${guide.sections.etapes.length}`);
-  console.log(`   Erreurs     : ${guide.sections.erreurs.length}`);
-  console.log(`   Fallback    : ${guide.fallback}\n`);
+  console.log(`   Erreurs     : ${guide.sections.erreurs.length}\n`);
 }
 
 main().catch((err) => {
