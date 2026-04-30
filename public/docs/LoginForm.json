@@ -1,0 +1,13 @@
+{
+  "component": "LoginForm",
+  "generated_at": "2026-04-30T19:41:38.439Z",
+  "fallback": true,
+  "sections": {
+    "description": "Composant LoginForm récemment modifié.",
+    "etapes": [
+      "Consultez le code source pour les actions disponibles.",
+      "Changements récents : \"use client\";, import { useState } from \"react\";, export function LoginForm({ onSuccess, maxAttempts = 3 }) {"
+    ],
+    "erreurs": []
+  }
+}
