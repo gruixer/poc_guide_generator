@@ -1,0 +1,18 @@
+{
+  "component": "LoginForm",
+  "generated_at": "2026-04-30T19:57:41.615Z",
+  "sections": {
+    "description": "Saisissez votre identifiant et mot de passe.",
+    "etapes": [
+      "Étape 1 : Entrez votre adresse e-mail ou nom d'utilisateur.",
+      "Étape 2 : Saisissez votre mot de passe.",
+      "Étape 3 : Cliquez sur 'Se connecter'."
+    ],
+    "erreurs": [
+      {
+        "message": "Identifiant ou mot de passe incorrect",
+        "explication": "Vérifiez vos informations et réessayez."
+      }
+    ]
+  }
+}
