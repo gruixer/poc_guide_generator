@@ -18,8 +18,7 @@ permissions:
 jobs:
   generate:
     runs-on: ubuntu-latest
-    # Sécurité : ignore les commits faits par le bot lui-même pour éviter
-    # une boucle de déclenchement infinie
+    timeout-minutes: 180  # 3h max — 30min × 3 étapes × marge
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
 
     steps:
@@ -62,15 +61,17 @@ jobs:
 
       # ── 5. Télécharger le modèle ───────────────────────────────────────
       - name: Pull model
-        run: ollama pull llama3:8b
-        timeout-minutes: 10
+        # qwen2.5:0.5b (~400MB) — beaucoup plus rapide que llama3.2:3b (2GB)
+        # sur un runner GitHub (2 CPU partagés), c'est le bon compromis vitesse/qualité
+        run: ollama pull qwen2.5:0.5b
+        timeout-minutes: 5
 
       # ── 6. Vérifier que le modèle répond correctement ─────────────────
       - name: Smoke test Ollama
         run: |
           RESULT=$(curl -sf -X POST http://localhost:11434/api/generate \
             -H 'Content-Type: application/json' \
-            -d '{"model":"llama3:8b","prompt":"Réponds uniquement: ok","stream":false}' \
+            -d '{"model":"qwen2.5:0.5b","prompt":"Réponds uniquement: ok","stream":false}' \
             | python3 -c "import sys,json; print(json.load(sys.stdin)['response'])" 2>&1)
           echo "Réponse modèle : $RESULT"
           if [ -z "$RESULT" ]; then
@@ -113,7 +114,7 @@ jobs:
         if: steps.changes.outputs.files != ''
         env:
           OLLAMA_URL:   http://localhost:11434
-          OLLAMA_MODEL: llama3:8b
+          OLLAMA_MODEL: qwen2.5:0.5b
         run: |
           ERRORS=0
           for FILE in ${{ steps.changes.outputs.files }}; do
