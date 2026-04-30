@@ -61,17 +61,17 @@ jobs:
 
       # ── 5. Télécharger le modèle ───────────────────────────────────────
       - name: Pull model
-        # qwen2.5:14b (~9GB) — meilleure qualité disponible sur Ollama pour du JSX structuré
-        # Pull ~10-15min sur CI, génération ~2-5min par composant
-        run: ollama pull qwen2.5:14b
-        timeout-minutes: 30
+        # qwen2.5:7b (~4.7GB) — meilleur modèle qui tient dans les 7GB RAM des runners GitHub
+        # Pull ~5-8min sur CI, génération ~1-3min par composant
+        run: ollama pull qwen2.5:7b
+        timeout-minutes: 15
 
       # ── 6. Vérifier que le modèle répond correctement ─────────────────
       - name: Smoke test Ollama
         run: |
           RESULT=$(curl -sf -X POST http://localhost:11434/api/generate \
             -H 'Content-Type: application/json' \
-            -d '{"model":"qwen2.5:14b","prompt":"Réponds uniquement: ok","stream":false}' \
+            -d '{"model":"qwen2.5:7b","prompt":"Réponds uniquement: ok","stream":false}' \
             | python3 -c "import sys,json; print(json.load(sys.stdin)['response'])" 2>&1)
           echo "Réponse modèle : $RESULT"
           if [ -z "$RESULT" ]; then
@@ -114,7 +114,7 @@ jobs:
         if: steps.changes.outputs.files != ''
         env:
           OLLAMA_URL:   http://localhost:11434
-          OLLAMA_MODEL: qwen2.5:14b
+          OLLAMA_MODEL: qwen2.5:7b
         run: |
           ERRORS=0
           for FILE in ${{ steps.changes.outputs.files }}; do

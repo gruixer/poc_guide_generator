@@ -17,7 +17,7 @@ dotenv.config({ path: '.env.local' });
 // CONFIG
 // ══════════════════════════════════════════════════════════════
 const OLLAMA_URL   = process.env.OLLAMA_URL   || 'http://localhost:11434';
-const MODEL        = process.env.OLLAMA_MODEL  || 'qwen2.5:14b';
+const MODEL        = process.env.OLLAMA_MODEL  || 'qwen2.5:7b';
 const OUTPUT_DIR   = 'public/docs';
 const TIMEOUT_MS   = 30 * 60 * 1000; // 30 minutes par appel
 const MAX_RETRIES  = 1;               // 1 seule tentative — si 30min ne suffisent pas, rien ne suffira
